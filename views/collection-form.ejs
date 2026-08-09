@@ -1,0 +1,65 @@
+<% title = collection ? 'Edit Collection' : 'New Collection' %>
+<div class="page-header">
+  <h1><%= collection ? 'Edit Collection' : 'New Collection' %></h1>
+  <a href="/collections" class="btn btn-secondary">Cancel</a>
+</div>
+
+<form action="<%= collection ? `/api/collections/${collection.id}?_method=PUT` : '/api/collections' %>" method="POST" class="form" onsubmit="return submitForm(event)">
+  <div class="field">
+    <label for="title">Title</label>
+    <input type="text" id="title" name="title" value="<%= collection ? collection.title : '' %>" required>
+  </div>
+  <div class="field">
+    <label for="description">Description</label>
+    <textarea id="description" name="description" rows="4"><%= collection ? collection.description || '' : '' %></textarea>
+  </div>
+  <div class="field">
+    <label for="season">Season</label>
+    <input type="text" id="season" name="season" value="<%= collection ? collection.season || '' : '' %>">
+  </div>
+  <div class="field">
+    <label for="brand">Brand</label>
+    <input type="text" id="brand" name="brand" value="<%= collection ? collection.brand || '' : '' %>">
+  </div>
+  <div class="field">
+    <label for="cover_look_id">Cover Look</label>
+    <select id="cover_look_id" name="cover_look_id">
+      <option value="">None</option>
+      <% looks.forEach(lk => { %>
+        <option value="<%= lk.id %>" <%= collection && collection.cover_look_id == lk.id ? 'selected' : '' %>><%= lk.title %></option>
+      <% }) %>
+    </select>
+  </div>
+  <div class="actions">
+    <button type="submit" class="btn btn-primary"><%= collection ? 'Update' : 'Create' %></button>
+  </div>
+</form>
+
+<script>
+async function submitForm(e) {
+  e.preventDefault();
+  const form = e.target;
+  const url = form.action;
+  const method = url.includes('_method=PUT') ? 'PUT' : 'POST';
+  const body = {
+    title: form.title.value,
+    description: form.description.value,
+    season: form.season.value,
+    brand: form.brand.value,
+    cover_look_id: form.cover_look_id.value || null
+  };
+  const res = await fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (res.ok) {
+    const data = await res.json();
+    window.location = `/collections/${data.id}`;
+  } else {
+    const data = await res.json().catch(() => ({}));
+    alert(data.error || 'Failed to save collection');
+  }
+  return false;
+}
+</script>

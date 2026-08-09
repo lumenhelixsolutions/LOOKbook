@@ -18,6 +18,12 @@ dependencies = [
 [project.optional-dependencies]
 image = ["Pillow>=10.0"]
 vision = ["opencv-python-headless>=4.8", "pytesseract>=0.3", "numpy>=2.0"]
+lab = [
+    "Pillow>=10.0",
+    "opencv-python-headless>=4.8",
+    "pytesseract>=0.3",
+    "numpy>=2.0,<2.4",
+]
 archive = ["rarfile>=4.0"]
 dev = ["pytest>=8.0", "ruff>=0.6"]
 

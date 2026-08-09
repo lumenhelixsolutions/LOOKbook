@@ -1,5 +1,6 @@
 from __future__ import annotations
 from pathlib import Path
+import json
 import zipfile
 import pytest
 
@@ -68,6 +69,94 @@ class TestArchive:
 
 
 class TestProcessArchive:
+    @pytest.fixture(autouse=True)
+    def _mock_ocr_and_wrap_cli(self, monkeypatch):
+        """Mock OCR to avoid pytesseract dependency and wrap CLI so SystemExit
+        is caught by process_archive's except Exception blocks."""
+
+        def _fake_extract_text(source, project, **kwargs):
+            blocks = [
+                {
+                    "text": "Dummy",
+                    "classification": "dialogue",
+                    "bbox": {"x": 0, "y": 0, "w": 10, "h": 10},
+                }
+            ]
+            project = Path(project)
+            result = {
+                "schema": "lookbook.ocr.v0.2",
+                "source_file": Path(source).name,
+                "lang": "eng",
+                "total_blocks": len(blocks),
+                "full_text": "Dummy",
+                "blocks": blocks,
+            }
+            ocr_file = project / "analysis" / "ocr_result.json"
+            ocr_file.parent.mkdir(parents=True, exist_ok=True)
+            ocr_file.write_text(json.dumps(result), encoding="utf-8")
+            return blocks
+
+        monkeypatch.setattr("lookbook.cli.extract_text", _fake_extract_text)
+
+        # Wrap cli_main so SystemExit is re-raised as RuntimeError,
+        # allowing process_archive to catch it in except Exception.
+        import lookbook.cli
+
+        _real_main = lookbook.cli.main
+
+        def _safe_main(argv=None):
+            try:
+                _real_main(argv)
+            except SystemExit as exc:
+                raise RuntimeError(f"CLI exited with code {exc.code}") from exc
+
+        monkeypatch.setattr("lookbook.cli.main", _safe_main)
+
+    def test_process_archive_runs_choreography(self, sample_cbz, tmp_path, monkeypatch):
+        """Verify process-archive invokes build_choreography after page OCR."""
+        from lookbook.pipeline.archive import process_archive
+
+        calls: list[str] = []
+
+        def _fake_build_choreography(project, **kwargs):
+            calls.append(str(project))
+            choreo_file = Path(project) / "analysis" / "choreography.json"
+            choreo_file.parent.mkdir(parents=True, exist_ok=True)
+            choreo_file.write_text(
+                json.dumps(
+                    {
+                        "schema": "lookbook.choreography.v0.1",
+                        "total_lines": 0,
+                        "lines": [],
+                        "voice_cast": {},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            return []
+
+        def _fake_export_living_panels(project, output=None):
+            out = Path(project) / "exports" / "living_panels" / "review.html"
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text("<html></html>", encoding="utf-8")
+            return out
+
+        monkeypatch.setattr(
+            "lookbook.pipeline.choreography.build_choreography",
+            _fake_build_choreography,
+        )
+        monkeypatch.setattr(
+            "lookbook.pipeline.living_panels_export.export_living_panels",
+            _fake_export_living_panels,
+        )
+
+        project = tmp_path / "test_project"
+        result = process_archive(sample_cbz, project, no_cleanup=True)
+
+        assert len(calls) == 1
+        assert calls[0] == str(project)
+        assert result["total_pages"] == 2
+
     def test_process_archive_basic(self, sample_cbz, tmp_path):
         """Test process-archive creates project and runs pipeline."""
         from lookbook.pipeline.archive import process_archive

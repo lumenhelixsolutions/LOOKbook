@@ -1,0 +1,157 @@
+<% title = collection.title %>
+<div class="page-header">
+  <h1><%= collection.title %></h1>
+  <div class="actions">
+    <% if (collection.status !== 'published') { %>
+      <a href="/collections/<%= collection.id %>/edit" class="btn">Edit</a>
+    <% } %>
+    <a href="/collections" class="btn btn-secondary">Back</a>
+  </div>
+</div>
+
+<div class="collection-header">
+  <div class="collection-info">
+    <span class="badge status-<%= collection.status %>"><%= collection.status %></span>
+    <% if (collection.season) { %><span class="meta"><%= collection.season %></span><% } %>
+    <% if (collection.brand) { %><span class="meta"><%= collection.brand %></span><% } %>
+    <p class="description"><%= collection.description || '' %></p>
+  </div>
+
+  <div class="workflow-actions">
+    <% if (collection.status === 'draft') { %>
+      <button class="btn" onclick="updateStatus('review')">Submit for Review</button>
+    <% } else if (collection.status === 'review') { %>
+      <button class="btn btn-primary" onclick="updateStatus('approved')">Approve</button>
+    <% } else if (collection.status === 'approved') { %>
+      <button class="btn btn-primary" onclick="updateStatus('published')">Publish</button>
+    <% } %>
+    <% if (collection.status !== 'draft') { %>
+      <button class="btn btn-secondary" onclick="updateStatus('draft', true)">Admin: Reset to Draft</button>
+    <% } %>
+  </div>
+</div>
+
+<% if (collection.status !== 'published') { %>
+<div class="add-look-panel">
+  <h3>Add Look</h3>
+  <form id="add-look-form" onsubmit="return addLook(event)">
+    <select name="look_id" required>
+      <option value="">Select look...</option>
+      <% allLooks.forEach(lk => { %>
+        <option value="<%= lk.id %>"><%= lk.title %></option>
+      <% }) %>
+    </select>
+    <button type="submit" class="btn btn-small">Add</button>
+  </form>
+</div>
+<% } %>
+
+<h2 class="section-title">Looks (<%= looks.length %>)</h2>
+<div class="grid look-grid" id="looks-grid">
+  <% looks.forEach((look, index) => { %>
+    <div class="card look-card" data-look-id="<%= look.id %>" data-order="<%= look.order_index %>">
+      <% if (look.image_url) { %>
+        <img src="<%= look.image_url %>" alt="<%= look.title %>" class="card-image">
+      <% } else { %>
+        <div class="card-image placeholder">No Image</div>
+      <% } %>
+      <div class="card-body">
+        <h3 class="card-title"><%= look.title %></h3>
+        <% if (collection.status !== 'published') { %>
+          <button class="btn btn-small btn-danger" onclick="removeLook(<%= look.id %>)">Remove</button>
+        <% } %>
+      </div>
+    </div>
+  <% }) %>
+</div>
+
+<% if (collection.status !== 'published' && looks.length > 1) { %>
+<p class="drag-hint">Drag looks to reorder</p>
+<% } %>
+
+<script>
+const collectionId = <%= collection.id %>;
+const isPublished = <%= JSON.stringify(collection.status === 'published') %>;
+
+async function updateStatus(status, force = false) {
+  const res = await fetch(`/api/collections/${collectionId}/status`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status, force })
+  });
+  if (res.ok) {
+    location.reload();
+  } else {
+    const data = await res.json().catch(() => ({}));
+    alert(data.error || 'Failed to update status');
+  }
+}
+
+async function addLook(e) {
+  e.preventDefault();
+  const form = e.target;
+  const look_id = form.look_id.value;
+  const res = await fetch(`/api/collections/${collectionId}/looks`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ look_id })
+  });
+  if (res.ok || res.status === 409) {
+    location.reload();
+  } else {
+    alert('Failed to add look');
+  }
+  return false;
+}
+
+async function removeLook(lookId) {
+  if (!confirm('Remove this look from the collection?')) return;
+  const res = await fetch(`/api/collections/${collectionId}/looks/${lookId}`, { method: 'DELETE' });
+  if (res.ok) {
+    location.reload();
+  } else {
+    alert('Failed to remove look');
+  }
+}
+
+// Simple drag-and-drop reordering
+let draggedId = null;
+const grid = document.getElementById('looks-grid');
+if (grid && !isPublished) {
+  grid.querySelectorAll('.look-card').forEach(card => {
+    card.draggable = true;
+    card.addEventListener('dragstart', e => {
+      draggedId = Number(card.dataset.lookId);
+      card.classList.add('dragging');
+    });
+    card.addEventListener('dragend', e => {
+      card.classList.remove('dragging');
+      draggedId = null;
+      saveOrder();
+    });
+    card.addEventListener('dragover', e => {
+      e.preventDefault();
+      if (!draggedId) return;
+      const target = e.target.closest('.look-card');
+      if (!target || target === card) return;
+      const rect = target.getBoundingClientRect();
+      const after = e.clientX > rect.left + rect.width / 2;
+      if (after) {
+        target.after(card);
+      } else {
+        target.before(card);
+      }
+    });
+  });
+}
+
+async function saveOrder() {
+  const cards = grid.querySelectorAll('.look-card');
+  const look_ids = Array.from(cards).map(c => Number(c.dataset.lookId));
+  await fetch(`/api/collections/${collectionId}/looks/reorder`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ look_ids })
+  });
+}
+</script>

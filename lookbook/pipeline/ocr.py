@@ -5,9 +5,36 @@ import shutil
 from ..models import write_json
 
 
+_WINDOWS_TESSERACT_PATHS = (
+    r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+    r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+)
+
+
+def _configure_tesseract() -> None:
+    """Point pytesseract at the Windows binary when it is not on PATH."""
+    try:
+        import pytesseract
+    except ImportError:
+        return
+    if shutil.which("tesseract"):
+        return
+    for candidate in _WINDOWS_TESSERACT_PATHS:
+        if Path(candidate).exists():
+            pytesseract.pytesseract.tesseract_cmd = candidate
+            break
+
+
 def _tesseract_available() -> bool:
     """Check if Tesseract OCR engine is installed and in PATH."""
-    return shutil.which("tesseract") is not None
+    _configure_tesseract()
+    try:
+        import pytesseract
+
+        cmd = getattr(pytesseract.pytesseract, "tesseract_cmd", "tesseract")
+        return Path(cmd).exists() if "\\" in str(cmd) or "/" in str(cmd) else shutil.which("tesseract") is not None
+    except ImportError:
+        return False
 
 
 def preprocess_image(path: Path, output_dir: Path | None = None) -> Path:
@@ -46,8 +73,15 @@ def extract_text(
     Returns a list of text blocks with bounding boxes and confidence scores.
     Each block: {text, conf, bbox: {x, y, w, h}, block_num, line_num}
     """
+    if not _tesseract_available():
+        raise RuntimeError(
+            "Tesseract OCR unavailable — install pytesseract (pip install pytesseract) "
+            "and the Tesseract engine (choco install tesseract)."
+        )
+
     import pytesseract
 
+    _configure_tesseract()
     source = Path(source)
     project = Path(project)
 

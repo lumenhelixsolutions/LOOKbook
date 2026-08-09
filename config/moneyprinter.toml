@@ -1,0 +1,67 @@
+# lookBOOK-specific MoneyPrinterTurbo configuration
+# Place this file at tools/moneyprinter/config.toml to activate.
+#
+# lookBOOK defaults:
+#   - No voiceover (subtitle_provider disabled, voice omitted)
+#   - 15-second target duration (enforced by bridge per-task)
+#   - Lower concurrency for book-companion workloads
+
+[app]
+video_source = "pexels"
+hide_config = false
+edge_tts_timeout = 30
+tls_verify = true
+
+# API keys — populate via environment or edit locally (do not commit secrets)
+pexels_api_keys = []
+pixabay_api_keys = []
+
+# LLM routing via LiteLLM gateway
+llm_provider = "litellm"
+litellm_model_name = "openai/gpt-4o-mini"
+
+# Subtitles disabled for lookBOOK (no voiceover path)
+subtitle_provider = ""
+
+# Video encoding
+# video_codec = "libx264"
+
+# Storage
+material_directory = ""
+
+# Concurrency (lighter footprint for companion tool)
+max_concurrent_tasks = 2
+max_queued_tasks = 20
+
+# Redis (disabled for local desktop use)
+enable_redis = false
+redis_host = "localhost"
+redis_port = 6379
+redis_db = 0
+redis_password = ""
+
+[whisper]
+model_size = "large-v3"
+device = "cpu"
+compute_type = "int8"
+
+[proxy]
+# http = ""
+# https = ""
+
+[azure]
+speech_key = ""
+speech_region = ""
+
+[siliconflow]
+api_key = ""
+
+[ui]
+hide_log = false
+
+# Upload-Post cross-posting (disabled by default)
+upload_post_enabled = false
+upload_post_api_key = ""
+upload_post_username = ""
+upload_post_platforms = ["tiktok", "instagram"]
+upload_post_auto_upload = false

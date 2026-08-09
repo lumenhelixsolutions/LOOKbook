@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
-from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
-from pathlib import Path
+"""Start lookBOOK lab_server (API + demo-lab UI on one port)."""
+from __future__ import annotations
+
 import os
 import webbrowser
 
-ROOT = Path(__file__).resolve().parents[1]
+from lookbook.lab_server import run_lab_server
+
 PORT = int(os.environ.get("LOOKBOOK_LAB_PORT", "8042"))
+
 if __name__ == "__main__":
-    os.chdir(ROOT)
-    url = f"http://127.0.0.1:{PORT}/demo-lab/index.html"
-    print(f"Serving lookBOOK Demo Lab at {url}")
+    url = f"http://127.0.0.1:{PORT}/"
+    print(f"lookBOOK Demo Lab: {url}")
+    print(f"Legacy path also works: http://127.0.0.1:{PORT}/demo-lab/index.html")
     try:
         webbrowser.open(url)
     except Exception:
         pass
-    ThreadingHTTPServer(("127.0.0.1", PORT), SimpleHTTPRequestHandler).serve_forever()
+    run_lab_server(port=PORT)

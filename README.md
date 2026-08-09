@@ -93,10 +93,10 @@ lookBOOK/
 # Start the unified pipeline lab (stdlib only, port 8042)
 python -m lookbook.lab_server
 # Optional: OCR / panel detection / vision endpoints need extra deps
-# pip install -e ".[image,vision]"
+# pip install -e ".[lab]"  # Pillow + OpenCV + pytesseract (Tesseract on PATH)
 ```
 
-The React review UI ships prebuilt in `demo-lab-react/dist/` — open `dist/index.html` in a browser (or serve it with any static file server) while the lab server runs; it talks to the API on port 8042. No npm build step is required.
+The React review UI ships prebuilt in `demo-lab-react/dist/` — open `dist/index.html` in a browser (or serve it with any static file server) while the lab server runs; it talks to the API on port 8042. No npm build step is required. To rebuild from source: `cd demo-lab-react && npm install && npm run build`.
 
 ## Roadmap
 

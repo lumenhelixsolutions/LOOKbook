@@ -1,8 +1,15 @@
 from __future__ import annotations
 from pathlib import Path
+import importlib.util
 import json
+import shutil
 
 import pytest
+
+_tesseract_available = (
+    importlib.util.find_spec("pytesseract") is not None
+    and shutil.which("tesseract") is not None
+)
 
 # ---- Fixtures ----
 
@@ -79,15 +86,9 @@ class TestOCR:
         img = Image.open(out)
         assert img.mode == "L"  # grayscale
 
+    @pytest.mark.skipif(not _tesseract_available, reason="tesseract not installed")
     def test_extract_text_integration(self, sample_image, test_project):
         """End-to-end: extract text from a synthetic comic page."""
-        pytest.importorskip("pytesseract")
-        import pytesseract as pt
-        from pathlib import Path
-
-        if not Path(pt.pytesseract.tesseract_cmd).exists():
-            pytest.skip("Tesseract OCR engine not found on this system")
-
         from lookbook.pipeline.ocr import extract_text
 
         blocks = extract_text(sample_image, test_project)
@@ -259,15 +260,9 @@ class TestShotGraph:
 
 
 class TestCLIIntegration:
+    @pytest.mark.skipif(not _tesseract_available, reason="tesseract not installed")
     def test_extract_text_cli(self, sample_image, test_project):
         """Verify extract-text CLI command produces correct output."""
-        pytest.importorskip("pytesseract")
-        import pytesseract as pt
-        from pathlib import Path
-
-        if not Path(pt.pytesseract.tesseract_cmd).exists():
-            pytest.skip("Tesseract OCR engine not found on this system")
-
         from lookbook.cli import main
 
         main(["extract-text", str(sample_image), str(test_project)])

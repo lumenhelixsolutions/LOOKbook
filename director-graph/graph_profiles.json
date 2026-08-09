@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "graphs": {
+    "lookbook-director-pipeline": {
+      "description": "ingest → shot graph → director packet → export review loop"
+    }
+  },
+  "profiles": {
+    "classical-runway": {
+      "graph": "lookbook-director-pipeline",
+      "target": "runway",
+      "description": "Classical shot graph with Runway director packet"
+    },
+    "dry-run-audit": {
+      "graph": "lookbook-director-pipeline",
+      "target": "runway",
+      "description": "Plan-only dry run for CI smokes"
+    }
+  }
+}

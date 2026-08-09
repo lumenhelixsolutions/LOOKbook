@@ -1,0 +1,145 @@
+<% title = look.title %>
+<div class="page-header">
+  <h1><%= look.title %></h1>
+  <div class="actions">
+    <a href="/looks/<%= look.id %>/edit" class="btn">Edit</a>
+    <a href="/looks" class="btn btn-secondary">Back</a>
+  </div>
+</div>
+
+<div class="two-col">
+  <div class="main">
+    <% if (look.image_url) { %>
+      <img src="<%= look.image_url %>" alt="<%= look.title %>" class="look-image">
+    <% } %>
+    <p class="description"><%= look.description || '' %></p>
+    <% if (look.tags) { %>
+      <p class="tags"><strong>Tags:</strong> <%= look.tags %></p>
+    <% } %>
+  </div>
+
+  <aside class="sidebar">
+    <div class="panel">
+      <h3>Add to Collection</h3>
+      <form id="add-to-collection" action="/api/collections/_/looks" method="POST" onsubmit="return addToCollection(event)">
+        <select name="collection_id" id="collection-select" required>
+          <option value="">Select collection...</option>
+          <% collections.forEach(c => { %>
+            <option value="<%= c.id %>" <%= inCollections.includes(c.id) ? 'disabled' : '' %>>
+              <%= c.title %> <%= inCollections.includes(c.id) ? '(added)' : '' %>
+            </option>
+          <% }) %>
+        </select>
+        <button type="submit" class="btn btn-small">Add</button>
+      </form>
+    </div>
+
+    <div class="panel">
+      <h3>Comments</h3>
+      <div class="comment-filter">
+        <label><input type="radio" name="filter" value="all" checked onchange="renderComments()"> All</label>
+        <label><input type="radio" name="filter" value="unresolved" onchange="renderComments()"> Unresolved</label>
+        <label><input type="radio" name="filter" value="resolved" onchange="renderComments()"> Resolved</label>
+      </div>
+      <div id="comments-list"></div>
+      <form id="comment-form" class="comment-form" onsubmit="return postComment(event)">
+        <input type="text" name="author" placeholder="Your name" required>
+        <textarea name="body" placeholder="Write a comment..." required></textarea>
+        <button type="submit" class="btn btn-primary btn-small">Post Comment</button>
+      </form>
+    </div>
+  </aside>
+</div>
+
+<script>
+const lookId = <%= look.id %>;
+const commentsData = <%- JSON.stringify(comments) %>;
+
+function renderComments() {
+  const filter = document.querySelector('input[name="filter"]:checked').value;
+  const list = document.getElementById('comments-list');
+  const filtered = commentsData.filter(c => {
+    if (filter === 'resolved') return c.resolved;
+    if (filter === 'unresolved') return !c.resolved;
+    return true;
+  });
+  list.innerHTML = filtered.map(c => `
+    <div class="comment ${c.resolved ? 'resolved' : ''}">
+      <div class="comment-header">
+        <strong>${escapeHtml(c.author)}</strong>
+        <span class="time">${new Date(c.created_at).toLocaleString()}</span>
+      </div>
+      <p>${escapeHtml(c.body)}</p>
+      <div class="comment-actions">
+        ${c.resolved
+          ? `<button class="btn btn-small" onclick="resolveComment(${c.id}, false)">Reopen</button>`
+          : `<button class="btn btn-small" onclick="resolveComment(${c.id}, true)">Resolve</button>`}
+        <button class="btn btn-small btn-danger" onclick="deleteComment(${c.id})">Delete</button>
+      </div>
+    </div>
+  `).join('') || '<p class="empty">No comments.</p>';
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+async function postComment(e) {
+  e.preventDefault();
+  const form = e.target;
+  const res = await fetch(`/api/looks/${lookId}/comments`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ author: form.author.value, body: form.body.value })
+  });
+  if (res.ok) {
+    const c = await res.json();
+    commentsData.unshift(c);
+    form.reset();
+    renderComments();
+  }
+  return false;
+}
+
+async function resolveComment(id, resolved) {
+  const res = await fetch(`/api/looks/${lookId}/comments/${id}/resolve`, { method: 'PATCH' });
+  if (res.ok) {
+    const c = await res.json();
+    const idx = commentsData.findIndex(x => x.id === id);
+    if (idx >= 0) commentsData[idx] = c;
+    renderComments();
+  }
+}
+
+async function deleteComment(id) {
+  if (!confirm('Delete this comment?')) return;
+  const res = await fetch(`/api/looks/${lookId}/comments/${id}`, { method: 'DELETE' });
+  if (res.ok) {
+    const idx = commentsData.findIndex(x => x.id === id);
+    if (idx >= 0) commentsData.splice(idx, 1);
+    renderComments();
+  }
+}
+
+async function addToCollection(e) {
+  e.preventDefault();
+  const select = document.getElementById('collection-select');
+  const collectionId = select.value;
+  if (!collectionId) return false;
+  const res = await fetch(`/api/collections/${collectionId}/looks`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ look_id: lookId })
+  });
+  if (res.ok || res.status === 409) {
+    location.reload();
+  } else {
+    alert('Failed to add to collection');
+  }
+  return false;
+}
+
+renderComments();
+</script>

@@ -1,0 +1,20 @@
+<% title = 'Looks' %>
+<div class="page-header">
+  <h1>Looks</h1>
+  <a href="/looks/new" class="btn btn-primary">New Look</a>
+</div>
+<div class="grid">
+  <% looks.forEach(look => { %>
+    <a href="/looks/<%= look.id %>" class="card">
+      <% if (look.image_url) { %>
+        <img src="<%= look.image_url %>" alt="<%= look.title %>" class="card-image">
+      <% } else { %>
+        <div class="card-image placeholder">No Image</div>
+      <% } %>
+      <div class="card-body">
+        <h3 class="card-title"><%= look.title %></h3>
+        <p class="card-meta"><%= look.tags || '' %></p>
+      </div>
+    </a>
+  <% }) %>
+</div>

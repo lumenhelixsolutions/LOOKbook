@@ -1,0 +1,31 @@
+<% title = 'Collections' %>
+<div class="page-header">
+  <h1>Collections</h1>
+  <a href="/collections/new" class="btn btn-primary">New Collection</a>
+</div>
+<div class="grid collections-grid">
+  <% collections.forEach(collection => { %>
+    <a href="/collections/<%= collection.id %>" class="card collection-card">
+      <div class="collection-cover">
+        <% if (collection.cover_look_id) { %>
+          <div class="cover-placeholder">Cover #<%= collection.cover_look_id %></div>
+        <% } else { %>
+          <div class="cover-placeholder">No Cover</div>
+        <% } %>
+      </div>
+      <div class="card-body">
+        <h3 class="card-title"><%= collection.title %></h3>
+        <div class="collection-meta">
+          <span class="badge status-<%= collection.status %>"><%= collection.status %></span>
+          <span class="look-count"><%= collection.look_count %> looks</span>
+        </div>
+        <% if (collection.season) { %>
+          <p class="card-meta"><%= collection.season %></p>
+        <% } %>
+        <% if (collection.brand) { %>
+          <p class="card-meta"><%= collection.brand %></p>
+        <% } %>
+      </div>
+    </a>
+  <% }) %>
+</div>

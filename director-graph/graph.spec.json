@@ -1,0 +1,22 @@
+{
+  "name": "lookbook-director-pipeline",
+  "version": "0.1.0",
+  "entry": "resolve_project",
+  "nodes": [
+    { "id": "resolve_project", "kind": "gate", "requires": "project path" },
+    { "id": "shot_graph", "kind": "tool", "module": "lookbook.pipeline.shot_graph" },
+    { "id": "director_packet", "kind": "tool", "module": "lookbook.pipeline.director_ai" },
+    { "id": "approve_export", "kind": "human", "ui": "director-packet-review" },
+    { "id": "export_cineforge", "kind": "tool", "module": "lookbook.pipeline.cineforge_export" },
+    { "id": "export_living_panels", "kind": "tool", "module": "lookbook.pipeline.living_panels_export" },
+    { "id": "review_loop", "kind": "gate", "exports": ["cineforge", "living_panels"] }
+  ],
+  "edges": [
+    ["resolve_project", "shot_graph"],
+    ["shot_graph", "director_packet"],
+    ["director_packet", "approve_export"],
+    ["approve_export", "export_cineforge"],
+    ["export_cineforge", "export_living_panels"],
+    ["export_living_panels", "review_loop"]
+  ]
+}

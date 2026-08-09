@@ -119,14 +119,16 @@ def process_archive(
     no_cleanup: bool = False,
     use_vision: bool = False,
     vision_provider: str | None = None,
+    living_panels: bool = False,
 ) -> dict[str, Any]:
     """Run the full lookBOOK pipeline on every page in a comic archive.
 
     For each page:
     1. Extract from archive
     2. Run detect-panels + extract-text + extract-characters
-    3. Build scene graph + shot graph
-    4. Export to all platforms
+    3. Build scene graph, choreography, and shot graph
+    4. Export living panels review HTML
+    5. Export to all platforms
 
     Args:
         archive: Path to CBZ or CBR file
@@ -215,7 +217,10 @@ def process_archive(
 
         results.append(page_result)
 
-    # Build scene graph + shot graph from combined analysis
+    from .choreography import build_choreography
+    from .living_panels_export import export_living_panels
+
+    # Build scene graph, choreography, and shot graph from combined analysis
     try:
         scene_args = ["build-scene-graph", str(project)]
         if use_vision:
@@ -228,6 +233,12 @@ def process_archive(
         page_result["scene_graph_error"] = str(e)
 
     try:
+        build_choreography(project)
+        page_result["choreography"] = True
+    except Exception as e:
+        page_result["choreography_error"] = str(e)
+
+    try:
         shot_args = ["build-shot-graph", str(project)]
         if use_vision:
             shot_args.append("--use-vision")
@@ -237,6 +248,12 @@ def process_archive(
         page_result["shot_graph"] = True
     except Exception as e:
         page_result["shot_graph_error"] = str(e)
+
+    try:
+        export_living_panels(project)
+        page_result["living_panels"] = True
+    except Exception as e:
+        page_result["living_panels_error"] = str(e)
 
     # Export to all platforms
     for export_cmd in [
@@ -278,7 +295,7 @@ def process_archive(
     print(f"  Total panels detected: {total_panels}")
     print(f"  Total OCR blocks: {total_ocr}")
     print(f"  Total character clusters: {total_chars}")
-    print("  Exports: runway, veo, kling, ffmpeg, remotion")
+    print("  Exports: runway, veo, kling, ffmpeg, remotion, living_panels")
     if use_vision:
         print(f"  Vision provider: {vision_provider or 'config default'}")
 

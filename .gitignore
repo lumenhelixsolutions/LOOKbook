@@ -22,3 +22,13 @@ Thumbs.db
 .vscode/
 .idea/
 tmppytest/
+tmp*/
+node_modules/
+.aider*
+agent-tools/
+terminals/
+lookbook.db
+*.db
+npm-debug.log*
+package-lock.json
+lookBOOK_true_animation_github_repo/

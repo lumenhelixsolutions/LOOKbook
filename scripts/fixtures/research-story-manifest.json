@@ -1,0 +1,19 @@
+{
+  "format": "lookbook.source_manifest.v1",
+  "title": "Portfolio E2E: AI Video Research",
+  "source_type": "research",
+  "files": [
+    {
+      "name": "ai-video-research.md",
+      "kind": "md",
+      "content": "# AI Video Research Brief\n\n## Key themes\n\n- Panel-to-shot storyboarding bridges research and render pipelines.\n- NotebookLM artifacts export as markdown source manifests.\n- lookBOOK compiles sources into shot graphs for cineforge ingest.\n\n## Scene beats\n\n1. Establish the research topic with a wide establishing frame.\n2. Dialogue beat between narrator and subject expert.\n"
+    }
+  ],
+  "metadata": {
+    "artifactId": "e2e-art-001",
+    "notebookId": "e2e-nb-001",
+    "type": "briefing",
+    "simulated": true,
+    "provider": "notetoolslm"
+  }
+}

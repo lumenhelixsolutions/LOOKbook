@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any
 import json
 from ..models import write_json
+from .choreography import camera_for_line, load_choreography
 
 
 def build_shot_graph(
@@ -14,6 +15,9 @@ def build_shot_graph(
     Converts each scene into a timed shot list with camera cues,
     motion directives, and panel transitions, ready for Runway/Veo/Kling
     integration.
+
+    When choreography.json exists with lines, emits one shot per
+    dialogue/narration line. Otherwise falls back to one shot per scene.
 
     Args:
         project: lookBOOK project path
@@ -38,7 +42,141 @@ def build_shot_graph(
     if not scenes:
         raise ValueError("No scenes found in scene graph.")
 
-    # Camera transition vocabulary
+    choreography = load_choreography(project)
+    choreo_lines: list[dict[str, Any]] = choreography.get("lines", []) if choreography else []
+
+    panel_bbox_map, panel_scene_map = _build_panel_maps(scenes)
+
+    if choreo_lines:
+        shots, total_time = _build_shots_from_choreography(
+            choreo_lines, scenes, panel_bbox_map, panel_scene_map
+        )
+    else:
+        shots, total_time = _build_shots_from_scenes(scenes)
+
+    result = {
+        "schema": "lookbook.shot_graph.v0.2",
+        "source_file": scene_data.get("source_file", str(project / "source")),
+        "total_shots": len(shots),
+        "total_duration_seconds": round(total_time, 1),
+        "fps": 24,
+        "frames": int(total_time * 24),
+        "shots": shots,
+    }
+
+    analysis_dir = project / "analysis"
+    analysis_dir.mkdir(parents=True, exist_ok=True)
+    write_json(analysis_dir / "shot_graph.json", result)
+
+    return shots
+
+
+def _build_panel_maps(
+    scenes: list[dict[str, Any]],
+) -> tuple[dict[int, dict[str, Any]], dict[int, int]]:
+    """Map panel indices to bbox and owning scene."""
+    panel_bbox_map: dict[int, dict[str, Any]] = {}
+    panel_scene_map: dict[int, int] = {}
+
+    for scene in scenes:
+        scene_index = scene.get("scene_index", 0)
+        for panel in scene.get("panels", []):
+            panel_index = panel.get("panel_index")
+            if panel_index is None:
+                continue
+            panel_bbox_map[panel_index] = panel.get("bbox", {})
+            panel_scene_map[panel_index] = scene_index
+
+        for panel_index in scene.get("panel_indices", []):
+            panel_scene_map.setdefault(panel_index, scene_index)
+
+    return panel_bbox_map, panel_scene_map
+
+
+def _duration_for_line(line: dict[str, Any]) -> float:
+    """Timing from word count (~3 words/sec, minimum 2s)."""
+    word_count = line.get("word_count", 0)
+    if word_count == 0 and line.get("text"):
+        word_count = len(line["text"].split())
+    return max(2.0, word_count / 3.0)
+
+
+def _shot_type_for_line(line: dict[str, Any]) -> str:
+    cls = line.get("classification", "dialogue")
+    if cls == "dialogue":
+        return "dialogue"
+    if cls in ("narration", "caption"):
+        return "action"
+    return "establishing"
+
+
+def _build_shots_from_choreography(
+    choreo_lines: list[dict[str, Any]],
+    scenes: list[dict[str, Any]],
+    panel_bbox_map: dict[int, dict[str, Any]],
+    panel_scene_map: dict[int, int],
+) -> tuple[list[dict[str, Any]], float]:
+    """One shot per choreography line (dialogue/narration)."""
+    scene_by_index = {scene["scene_index"]: scene for scene in scenes}
+    shots: list[dict[str, Any]] = []
+    total_time = 0.0
+    prev_scene_index: int | None = None
+
+    for line in choreo_lines:
+        panel_index = line.get("panel_index", -1)
+        scene_index = panel_scene_map.get(panel_index, scenes[0]["scene_index"])
+        scene = scene_by_index.get(scene_index, {})
+        panel_bbox = panel_bbox_map.get(panel_index, {})
+
+        shot_type = _shot_type_for_line(line)
+        duration = _duration_for_line(line)
+        camera = camera_for_line(line, panel_bbox)
+
+        if prev_scene_index is None:
+            transition_in = "cut"
+        elif prev_scene_index == scene_index:
+            transition_in = "dissolve"
+        else:
+            transition_in = "cut"
+
+        text = line.get("text", "")
+        cls = line.get("classification", "dialogue")
+        dialogue = [text] if cls == "dialogue" else []
+        narration = [text] if cls in ("narration", "caption") else []
+
+        shot = {
+            "shot_index": len(shots),
+            "scene_index": scene_index,
+            "type": shot_type,
+            "duration_seconds": round(duration, 1),
+            "start_time": round(total_time, 1),
+            "end_time": round(total_time + duration, 1),
+            "panels": [panel_index] if panel_index >= 0 else [],
+            "panel_count": 1 if panel_index >= 0 else 0,
+            "panel": panel_index,
+            "camera": camera,
+            "choreography_line_index": line.get("line_index"),
+            "active_speaker": line.get("speaker"),
+            "transition_in": transition_in,
+            "dialogue": dialogue,
+            "narration": narration,
+            "characters": scene.get("characters", []),
+            "motion_directive": _generate_motion_directive(
+                shot_type, 1, cls == "dialogue"
+            ),
+        }
+
+        shots.append(shot)
+        total_time += duration
+        prev_scene_index = scene_index
+
+    return shots, total_time
+
+
+def _build_shots_from_scenes(
+    scenes: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], float]:
+    """Fallback: one shot per scene when choreography is absent."""
     CAMERA_MOVES = [
         "pan right",
         "pan left",
@@ -60,7 +198,7 @@ def build_shot_graph(
     TRANSITIONS = ["cut", "fade in", "fade out", "dissolve", "wipe left", "wipe right"]
 
     shot_timing = {
-        "establishing": 4.0,  # seconds
+        "establishing": 4.0,
         "dialogue": 3.5,
         "action": 2.5,
         "transition": 1.0,
@@ -78,13 +216,10 @@ def build_shot_graph(
         if panel_count == 0:
             continue
 
-        # Establishing shot for the scene
-
-        # Deterministic camera move from scene index
         cam_idx = scene["scene_index"] % len(CAMERA_MOVES)
+        camera = CAMERA_MOVES[cam_idx]
         trans_idx = (scene["scene_index"] + 1) % len(TRANSITIONS)
 
-        # Determine shot type from content
         has_dialogue = len(dialogue) > 0
         has_action = len(narration) > 0
 
@@ -97,9 +232,7 @@ def build_shot_graph(
 
         duration = shot_timing.get(shot_type, 3.0)
 
-        # Adjust duration for dialogue-heavy scenes
         if has_dialogue:
-            # Rough timing: ~3 words per second
             words = sum(len(d.split()) for d in dialogue)
             duration = max(duration, words / 3.0)
 
@@ -112,7 +245,9 @@ def build_shot_graph(
             "end_time": round(total_time + duration, 1),
             "panels": panel_indices,
             "panel_count": panel_count,
-            "camera": CAMERA_MOVES[cam_idx],
+            "camera": camera,
+            "choreography_line_index": None,
+            "active_speaker": None,
             "transition_in": TRANSITIONS[trans_idx],
             "dialogue": dialogue,
             "narration": narration,
@@ -123,7 +258,6 @@ def build_shot_graph(
         shots.append(shot)
         total_time += duration
 
-        # Add a transition shot between scenes if not the last scene
         if scene["scene_index"] < len(scenes) - 1:
             trans_shot = {
                 "shot_index": len(shots),
@@ -144,21 +278,7 @@ def build_shot_graph(
             shots.append(trans_shot)
             total_time += shot_timing["transition"]
 
-    result = {
-        "schema": "lookbook.shot_graph.v0.2",
-        "source_file": scene_data.get("source_file", str(project / "source")),
-        "total_shots": len(shots),
-        "total_duration_seconds": round(total_time, 1),
-        "fps": 24,
-        "frames": int(total_time * 24),
-        "shots": shots,
-    }
-
-    analysis_dir = project / "analysis"
-    analysis_dir.mkdir(parents=True, exist_ok=True)
-    write_json(analysis_dir / "shot_graph.json", result)
-
-    return shots
+    return shots, total_time
 
 
 def _generate_motion_directive(shot_type: str, panel_count: int, has_dialogue: bool) -> str:

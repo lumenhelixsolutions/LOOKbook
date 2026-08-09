@@ -27,20 +27,27 @@ def build_scene_graph(
     """
     project = Path(project)
 
-    def _load(key: str, default: list = []) -> list:
-        path = project / "analysis" / f"{key}_analysis.json"
-        if path.exists():
-            data = json.loads(path.read_text(encoding="utf-8"))
-            return data.get(key + "s", data.get("blocks", data.get("panels", default)))
-        return default
+    def _load_panels() -> list:
+        panel_path = project / "analysis" / "panel_analysis.json"
+        if panel_path.exists():
+            data = json.loads(panel_path.read_text(encoding="utf-8"))
+            return data.get("panels", [])
+        return []
 
-    panels = _load("panel")
+    def _load_ocr_blocks() -> list:
+        ocr_path = project / "analysis" / "ocr_result.json"
+        if ocr_path.exists():
+            data = json.loads(ocr_path.read_text(encoding="utf-8"))
+            return data.get("blocks", [])
+        return []
+
+    panels = _load_panels()
     characters_data = project / "analysis" / "character_analysis.json"
     characters: list[dict[str, Any]] = []
     if characters_data.exists():
         characters = json.loads(characters_data.read_text(encoding="utf-8")).get("characters", [])
 
-    ocr_blocks = _load("ocr", default=[])
+    ocr_blocks = _load_ocr_blocks()
 
     if not panels:
         raise ValueError("No panel data found. Run 'lookbook detect-panels' first.")

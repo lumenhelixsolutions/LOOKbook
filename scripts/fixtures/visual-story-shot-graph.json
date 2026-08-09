@@ -1,0 +1,28 @@
+{
+  "schema": "lookbook.shot_graph.v0.3",
+  "total_shots": 2,
+  "total_duration_seconds": 7.0,
+  "fps": 24,
+  "shots": [
+    {
+      "shot_index": 0,
+      "scene_index": 0,
+      "type": "establishing",
+      "duration_seconds": 4.0,
+      "camera": "pan right",
+      "characters": ["Hero"],
+      "motion_directive": "Hero leaps forward across the panel.",
+      "panels": [0]
+    },
+    {
+      "shot_index": 1,
+      "scene_index": 0,
+      "type": "dialogue",
+      "duration_seconds": 3.0,
+      "camera": "static",
+      "characters": ["Hero", "Villain"],
+      "dialogue": ["You won't escape!"],
+      "panels": [1]
+    }
+  ]
+}

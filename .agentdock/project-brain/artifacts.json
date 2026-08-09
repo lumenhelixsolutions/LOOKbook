@@ -1,0 +1,22 @@
+{
+  "updated_at": "2026-06-12T20:00:00Z",
+  "session_end": true,
+  "plan_version": "1.0.0",
+  "milestone_version": "2026-06-11.1",
+  "canonical": true,
+  "portfolio_milestone": 6,
+  "artifacts": [
+    {
+      "id": "shot-graph-schema",
+      "path": "lookbook/schemas.py",
+      "schema": "lookbook.shot_graph.v0.3",
+      "status": "verified"
+    },
+    {
+      "id": "pipeline-overview-wiki",
+      "path": ".agentdock/project-brain/wiki/pipeline-overview.md",
+      "schema": "lookbook.pipeline-overview.v1",
+      "status": "verified"
+    }
+  ]
+}

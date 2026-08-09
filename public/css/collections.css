@@ -1,0 +1,26 @@
+/* Collections-specific styles */
+.collections-grid .collection-card {
+  display: flex;
+  flex-direction: column;
+}
+.collection-cover {
+  height: 160px;
+  background: #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cover-placeholder {
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+.collection-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+.look-count {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
