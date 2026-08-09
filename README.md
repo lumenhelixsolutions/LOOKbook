@@ -39,8 +39,7 @@ git clone https://github.com/lumenhelixlab/LOOKbook.git
 cd LOOKbook
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -e ".[lab,dev]"
-npm install
+pip install -e ".[dev]"
 lookbook demo my-demo
 ```
 
@@ -51,8 +50,7 @@ git clone https://github.com/lumenhelixlab/LOOKbook.git
 Set-Location LOOKbook
 python -m venv .venv
 .venv\Scripts\activate
-pip install -e ".[lab,dev]"
-npm install
+pip install -e ".[dev]"
 lookbook demo my-demo
 ```
 
@@ -63,8 +61,7 @@ git clone https://github.com/lumenhelixlab/LOOKbook.git
 cd LOOKbook
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -e ".[lab,dev]"
-npm install
+pip install -e ".[dev]"
 lookbook demo my-demo
 ```
 
@@ -93,11 +90,13 @@ lookBOOK/
 ## Development
 
 ```bash
-# Start the unified pipeline lab
+# Start the unified pipeline lab (stdlib only, port 8042)
 python -m lookbook.lab_server
-# In another terminal, build the React UI
-cd demo-lab-react && npm install && npm run build
+# Optional: OCR / panel detection / vision endpoints need extra deps
+# pip install -e ".[image,vision]"
 ```
+
+The React review UI ships prebuilt in `demo-lab-react/dist/` — open `dist/index.html` in a browser (or serve it with any static file server) while the lab server runs; it talks to the API on port 8042. No npm build step is required.
 
 ## Roadmap
 

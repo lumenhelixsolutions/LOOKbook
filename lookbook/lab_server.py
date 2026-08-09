@@ -185,3 +185,12 @@ def start_lab_server_thread(port: int = 8042) -> Thread:
     thread.start()
     print(f"lookBOOK Lab Server running at http://localhost:{port}")
     return thread
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="lookBOOK Demo Lab server")
+    parser.add_argument("--port", type=int, default=8042)
+    args = parser.parse_args()
+    run_lab_server(port=args.port)
